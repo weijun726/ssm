@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:c="http://www.springframework.org/schema/c" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+	
+	<!-- 引入db.properties文件内容 -->
+	<context:property-placeholder location="classpath:db.properties"/>
+	
+	<!-- 全包扫描 -->
+	<context:component-scan base-package="com.bwf.*" >
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+	</context:component-scan>
+
+	<!-- 数据源,连接数据库的池集合 -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="driverClassName" value="${database.driver}"></property>
+		<property name="url" value="${database.url}"></property>
+		<property name="username" value="${database.username}"></property>
+		<property name="password" value="${database.password}"></property>
+	</bean>
+
+	 <!-- 配置sqlSessionFactory -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <!-- 实例化sqlSessionFactory时需要使用上述配置好的数据源以及SQL映射文件 -->
+        <property name="dataSource" ref="dataSource" />
+        <!-- 自动扫描me/gacl/mapping/目录下的所有SQL映射的xml文件, 省掉Configuration.xml里的手工配置
+        value="classpath:me/gacl/mapping/*.xml"指的是classpath(类路径)下me.gacl.mapping包中的所有xml文件
+        UserMapper.xml位于me.gacl.mapping包下，这样UserMapper.xml就可以被自动扫描
+         -->
+        <property name="mapperLocations" value="classpath:com/bwf/bean/*.xml" />
+        <!-- 引入mybatis的主配置文件 -->
+        <property name="configLocation" value="classpath:mybatis.xml"></property>
+    </bean>
+	
+	 <!-- 配置自动扫描器 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <!-- 扫描me.gacl.dao这个包以及它的子包下的所有映射接口类 -->
+        <property name="basePackage" value="com.bwf.dao" />
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory" />
+    </bean>
+	
+	
+	
+	<!-- 事务管理器 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+	
+	<!-- 声明式事务 -->
+	<aop:config>
+		<aop:advisor pointcut="execution(* com.bwf.dao.*.*(..))" advice-ref="txAdvice"></aop:advisor>
+	</aop:config>
+	<tx:advice	id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="add*" propagation="REQUIRED"  timeout="10" isolation="DEFAULT"/>
+			<tx:method name="update*" propagation="REQUIRED"  timeout="10" isolation="DEFAULT"/>
+			<tx:method name="delete*" propagation="REQUIRED"  timeout="10" isolation="DEFAULT"/>
+			<tx:method name="find*" read-only="true" />
+			<tx:method name="query*" read-only="true" />
+		</tx:attributes>
+	</tx:advice>
+	
+
+</beans>
